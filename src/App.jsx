@@ -1,53 +1,34 @@
 import { useState, useEffect } from 'react';
 import TaskItem from './TaskItem';
+import Auth from './Auth';
+
+const API = 'https://test-project1-production.up.railway.app';
 
 function App() {
-  // const [tasks, setTasks] = useState([
-  //   { id: 1, text: 'Выучить React', done: false },
-  //   { id: 2, text: 'Задеплоить проект', done: true },
-  //   { id: 3, text: 'Найти работу', done: false },
-  // ]);
   const [tasks, setTasks] = useState([]);
-
-  useEffect(() => {
-    fetch('https://test-project1-production.up.railway.app/tasks')
-      .then(res => res.json())
-      .then(data => setTasks(data));
-  }, []);
-
+  const [token, setToken] = useState(localStorage.getItem('token'));
   const [newText, setNewText] = useState('');
 
-  // function toggleTask(id) {
-  //   setTasks(tasks.map(task =>
-  //     task.id === id ? { ...task, done: !task.done } : task
-  //   ));
-  // }
+  useEffect(() => {
+    if (token) loadTasks();
+  }, [token]);
 
-  // function addTask() {
-  //   if (!newText.trim()) return;
-  //   setTasks([...tasks, { id: Date.now(), text: newText, done: false }]);
-  //   setNewText('');
-  // }
-
-  // function deleteTask(id) {
-  //   // TODO: используй setTasks и filter
-  //   // как в уроке 2 с чистым JS
-  //   setTasks(tasks.filter(task => task.id !== id));
-  // }
-  async function toggleTask(id) {
-    await fetch(`https://test-project1-production.up.railway.app/tasks/${id}`, {
-      method: 'PATCH'
+  async function loadTasks() {
+    const res = await fetch(`${API}/tasks`, {
+      headers: { Authorization: `Bearer ${token}` }
     });
-    setTasks(tasks.map(task =>
-      task.id === id ? { ...task, done: !task.done } : task
-    ));
+    const data = await res.json();
+    setTasks(data);
   }
 
   async function addTask() {
     if (!newText.trim()) return;
-    const res = await fetch('https://test-project1-production.up.railway.app/tasks', {
+    const res = await fetch(`${API}/tasks`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
       body: JSON.stringify({ text: newText })
     });
     const newTask = await res.json();
@@ -55,16 +36,40 @@ function App() {
     setNewText('');
   }
 
+  async function toggleTask(id) {
+    await fetch(`${API}/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setTasks(tasks.map(task =>
+      task.id === id ? { ...task, done: !task.done } : task
+    ));
+  }
+
   async function deleteTask(id) {
-    await fetch(`https://test-project1-production.up.railway.app/tasks/${id}`, {
-      method: 'DELETE'
+    await fetch(`${API}/tasks/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
     });
     setTasks(tasks.filter(task => task.id !== id));
   }
 
+  function logout() {
+    localStorage.removeItem('token');
+    setToken(null);
+    setTasks([]);
+  }
+
+  if (!token) return <Auth onLogin={setToken} />;
+
   return (
     <div style={{ maxWidth: '400px', margin: '40px auto' }}>
-      <h1>Мои задачи</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>Мои задачи</h1>
+        <button onClick={logout} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '8px 12px', cursor: 'pointer' }}>
+          Выйти
+        </button>
+      </div>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
         <input
           value={newText}
